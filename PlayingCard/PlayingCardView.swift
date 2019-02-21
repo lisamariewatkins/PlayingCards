@@ -8,6 +8,7 @@
 
 import UIKit
 
+/// Custom playing card view
 @IBDesignable
 class PlayingCardView: UIView {
     @IBInspectable
@@ -17,14 +18,20 @@ class PlayingCardView: UIView {
     @IBInspectable
     var isFaceUp: Bool = true {didSet {setNeedsDisplay(); setNeedsLayout()}}
     
+    /// Set corner labels
     private lazy var upperLeftCornerLabel = createCornerLabel()
     private lazy var lowerRightCornerLabel = createCornerLabel()
 
+    /// Draw current playing card
+    ///
+    /// - Parameter rect: containing rect of view
     override func draw(_ rect: CGRect) {
         drawBackground()
         if isFaceUp {
             if let faceCardImage = UIImage(named: rankString+suit, in: Bundle(for: self.classForCoder), compatibleWith: traitCollection) {
                 faceCardImage.draw(in: bounds.zoom(by: SizeRatio.faceCardImageSizeToBoundsSize))
+            } else {
+                drawPips()
             }
         } else {
             if let cardBackImage = UIImage(named: "cardback", in: Bundle(for: self.classForCoder), compatibleWith: traitCollection) {
@@ -34,6 +41,7 @@ class PlayingCardView: UIView {
         
     }
     
+    /// Configure all sub views of the playing card
     override func layoutSubviews() {
         super.layoutSubviews()
         configureCornerLabel(upperLeftCornerLabel)
@@ -54,6 +62,9 @@ class PlayingCardView: UIView {
         setNeedsLayout()
     }
     
+    /// Add correct text and size to corner labels on cards if face up
+    ///
+    /// - Parameter label: corner label
     private func configureCornerLabel(_ label: UILabel) {
         label.attributedText = cornerString
         label.frame.size = CGSize.zero // clear size
@@ -61,6 +72,50 @@ class PlayingCardView: UIView {
         label.isHidden = !isFaceUp
     }
     
+    /// Draw the pips in the center of numbered cards
+    private func drawPips() {
+        let pipsPerRowForRank = [[0],[1],[1,1],[1,1,1],[2,2],[2,1,2],[2,2,2],[2,1,2,2],[2,2,2,2],[2,2,1,2,2],[2,2,2,2,2]]
+        
+        func createPipString(thatFits pipRect: CGRect) -> NSAttributedString {
+            let maxVerticalPipCount = CGFloat(pipsPerRowForRank.reduce(0) { max($1.count, $0) })
+            let maxHorizontalPipCount = CGFloat(pipsPerRowForRank.reduce(0) { max($1.max() ?? 0, $0) })
+            let verticalPipRowSpacing = pipRect.size.height / maxVerticalPipCount
+            let attemptedPipString = centeredAttributedString(suit, fontSize: verticalPipRowSpacing)
+            let probablyOkayPipStringFontSize = verticalPipRowSpacing / (attemptedPipString.size().height / verticalPipRowSpacing)
+            let probablyOkayPipString = centeredAttributedString(suit, fontSize: probablyOkayPipStringFontSize)
+            if probablyOkayPipString.size().width > pipRect.size.width / maxHorizontalPipCount {
+                return centeredAttributedString(suit, fontSize: probablyOkayPipStringFontSize / (probablyOkayPipString.size().width / (pipRect.size.width / maxHorizontalPipCount)))
+            } else {
+                return probablyOkayPipString
+            }
+        }
+        
+        if pipsPerRowForRank.indices.contains(rank) {
+            let pipsPerRow = pipsPerRowForRank[rank]
+            var pipRect = bounds.insetBy(dx: cornerOffset, dy: cornerOffset).insetBy(dx: cornerString.size().width, dy: cornerString.size().height / 2)
+            let pipString = createPipString(thatFits: pipRect)
+            let pipRowSpacing = pipRect.size.height / CGFloat(pipsPerRow.count)
+            pipRect.size.height = pipString.size().height
+            pipRect.origin.y += (pipRowSpacing - pipRect.size.height) / 2
+            for pipCount in pipsPerRow {
+                switch pipCount {
+                case 1:
+                    pipString.draw(in: pipRect)
+                case 2:
+                    pipString.draw(in: pipRect.leftHalf)
+                    pipString.draw(in: pipRect.rightHalf)
+                default:
+                    break
+                }
+                pipRect.origin.y += pipRowSpacing
+            }
+        }
+    }
+    
+    
+    /// Make corner label
+    ///
+    /// - Returns: corner label
     private func createCornerLabel() -> UILabel {
         let label = UILabel()
         label.numberOfLines = 0 // use as many lines as you need
@@ -68,6 +123,13 @@ class PlayingCardView: UIView {
         return label
     }
     
+    
+    /// Center and stack card number and suit
+    ///
+    /// - Parameters:
+    ///   - string: Label string
+    ///   - fontSize: font size
+    /// - Returns: stacked and centered label string
     private func centeredAttributedString(_ string: String, fontSize: CGFloat) -> NSAttributedString {
         var font = UIFont.preferredFont(forTextStyle: .body).withSize(fontSize)
         font = UIFontMetrics(forTextStyle: .body).scaledFont(for: font) // accessibility
@@ -90,7 +152,8 @@ class PlayingCardView: UIView {
 
 }
 
-// constants
+
+// MARK: - Extensions
 extension PlayingCardView {
     private struct SizeRatio {
         static let cornerFontSizeToBoundsHeight: CGFloat = 0.085
@@ -124,7 +187,7 @@ extension PlayingCardView {
 }
 
 extension CGRect {
-    var leftHlaf: CGRect {
+    var leftHalf: CGRect {
         return CGRect(x: minX, y: minY, width: width/2, height:height)
     }
     var rightHalf: CGRect {

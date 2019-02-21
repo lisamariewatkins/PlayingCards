@@ -8,9 +8,11 @@
 
 import Foundation
 
+/// Deck of playing cards
 struct PlayingCardDeck {
     private(set) var cards = [PlayingCard]()
     
+    /// Initialize deck with all possible 52 playing cards
     init() {
         for suit in PlayingCard.Suit.all {
             for rank in PlayingCard.Rank.all {
@@ -19,6 +21,10 @@ struct PlayingCardDeck {
         }
     }
     
+    
+    /// Draw a random card from the deck
+    ///
+    /// - Returns: random PlayingCard
     mutating func draw() -> PlayingCard? {
         if (cards.count > 0) {
             return cards.remove(at: cards.count.arc4random)
@@ -28,6 +34,8 @@ struct PlayingCardDeck {
     }
 }
 
+
+// MARK: - Extensions
 extension Int {
     var arc4random: Int {
         if self > 0 {
